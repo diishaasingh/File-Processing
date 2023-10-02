@@ -1,2 +1,8 @@
 2023-10-02 10:25:14 INFO  FileProcessor:106 - Copied and processed data file: file.txt
 2023-10-02 10:25:14 INFO  FileProcessor:106 - Copied and processed data file: New Text Document.txt
+2023-10-02 12:51:02 ERROR FileProcessor:22 - Error processing files: No .csv or .txt file found for existing .trg files in the source folder.
+2023-10-02 13:40:29 INFO  FileProcessor:106 - Copied and processed data file: file.txt
+2023-10-02 13:40:29 INFO  FileProcessor:106 - Copied and processed data file: New Text Document.txt
+2023-10-02 14:53:59 INFO  FileProcessor:106 - Copied and processed data file: file.txt
+2023-10-02 14:53:59 INFO  FileProcessor:106 - Copied and processed data file: New Text Document.txt
+2023-10-02 14:55:28 ERROR FileProcessor:22 - Error processing files: No .csv or .txt file found for existing .trg files in the source folder.
