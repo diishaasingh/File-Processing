@@ -87,7 +87,8 @@ public class FileProcessor {
 			int totalFiles = trgToDataFileMap.size();
 			int processedFiles = totalFiles - countOfTrgFilesWithoutCsvOrDataFiles;
 
-			logger.info("Processing {} files. Skipping {} files as corresponding CSV or data file was absent.",
+			logger.info(
+					"Processing {} files whose corresponding csv and data files are present. Skipping {} files as corresponding CSV or data file was absent.",
 					processedFiles, countOfTrgFilesWithoutCsvOrDataFiles);
 
 			// traversing again on the map and processing csv files
@@ -122,15 +123,25 @@ public class FileProcessor {
 				String[] parts = line.split(",");
 				if (parts.length == 2) {
 					String folder = parts[0].trim();
-					boolean createRevision = Boolean.parseBoolean(parts[1].trim());
-					String destinationFolderPath = destinationFolder + File.separator + folder;
-					logger.info("Destination folder path: {}", destinationFolderPath);
+					String createRevisionStr = parts[1].trim();
 
+					// Validating createRevision value
+					boolean createRevision;
+					if (!createRevisionStr.equalsIgnoreCase("true") && !createRevisionStr.equalsIgnoreCase("false")) {
+						logger.error("Invalid createRevision value in CSV: {}", createRevisionStr);
+						return;
+					} else {
+						createRevision = Boolean.parseBoolean(createRevisionStr);
+					}
+
+					// Validating if folder exists in the destination folder
+					String destinationFolderPath = destinationFolder + File.separator + folder;
 					File destinationFolderFile = new File(destinationFolderPath);
 					if (!destinationFolderFile.exists()) {
-						logger.error("Could not process data file as {} does not exist", destinationFolderPath);
+						logger.error("Invalid folder or folder does not exist: {}", destinationFolderPath);
 						return;
 					}
+
 					processDataFile(dataFilePath, destinationFolderPath, createRevision);
 				}
 			}
