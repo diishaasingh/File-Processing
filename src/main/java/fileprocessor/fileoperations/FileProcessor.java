@@ -6,79 +6,132 @@ import org.slf4j.LoggerFactory;
 import fileprocessor.fileoperations.exceptions.SourceFolderDoesNotExistException;
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 
 public class FileProcessor {
 
 	private static final Logger logger = LoggerFactory.getLogger(FileProcessor.class);
+	private static final String trgFileExtension = ".trg";
+	private static final String csvFileExtension = ".csv";
+	private static final String errorFileExtension = ".err";
+	// the extension of data file can be anything except these three
 
 	public static void main(String[] args) {
 		String sourceFolder = "C:\\Users\\DishaSingh\\Documents\\source";
 		String destinationFolder = "C:\\Users\\DishaSingh\\Documents\\destination";
 
 		try {
+			logger.info("Started processing files from source folder");
 			processFiles(sourceFolder, destinationFolder);
-		} catch (FileNotFoundException e) {
-			logger.error("Error processing files: {}", e.getMessage());
 		} catch (SourceFolderDoesNotExistException e) {
 			logger.error("Source folder does not exist or is empty: {}", e.getMessage());
 		}
 	}
 
 	private static void processFiles(String sourceFolder, String destinationFolder)
-			throws FileNotFoundException, SourceFolderDoesNotExistException {
+			throws SourceFolderDoesNotExistException {
 		File sourceDir = new File(sourceFolder);
 		File[] files = sourceDir.listFiles();
 
 		if (files != null) {
-			boolean csvOrTxtFileFound = false;
+			// Map to store trg filename without extension as key and data file name with
+			// extension as value
+			Map<String, String> trgToDataFileMap = new HashMap<>();
+			Set<String> csvFileSet = new HashSet<>();
+			Set<String> errorFileSet = new HashSet<>();
+			Set<String> dataFileSet = new HashSet<>();
 
+			// traversing the list of files in the source folder and adding the file name in
+			// their respective data structures
 			for (File file : files) {
-				if (file.getName().endsWith(".trg")) {
-					String baseFileName = file.getName().replace(".trg", "");
-					File csvFile = new File(sourceFolder, baseFileName + ".csv");
-					File txtFile = new File(sourceFolder, baseFileName + ".txt");
+				if (file.getName().endsWith(trgFileExtension)) {
+					String baseName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+					trgToDataFileMap.put(baseName, null);
+				} else if (file.getName().endsWith(csvFileExtension)) {
+					csvFileSet.add(file.getName());
+				} else if (file.getName().endsWith(errorFileExtension)) {
+					errorFileSet.add(file.getName());
+				} else {
+					dataFileSet.add(file.getName());
+				}
+			}
 
-					if (csvFile.exists()) {
-						csvOrTxtFileFound = true;
-						processCsvFile(csvFile, destinationFolder);
-					} else if (txtFile.exists()) {
-						csvOrTxtFileFound = true;
-						processDataFile(txtFile, destinationFolder);
+			for (String trgFileName : trgToDataFileMap.keySet()) {
+				String csvFileName = trgFileName + csvFileExtension;
+				if (csvFileSet.contains(csvFileName)) {
+					for (String dataFileName : dataFileSet) {
+						String extension = dataFileName.substring(dataFileName.lastIndexOf('.'));
+						if (!extension.equals(trgFileExtension) && !extension.equals(csvFileExtension)
+								&& !extension.equals(errorFileExtension)) {
+							String dataBaseName = dataFileName.substring(0, dataFileName.lastIndexOf('.'));
+							if (dataBaseName.equals(trgFileName))
+								trgToDataFileMap.put(trgFileName, dataFileName);
+						}
 					}
 				}
 			}
 
-			if (!csvOrTxtFileFound) {
-				throw new FileNotFoundException(
-						"No .csv or .txt file found for existing .trg files in the source folder.");
+			int countOfTrgFilesWithoutCsvOrDataFiles = 0;
+
+			for (Map.Entry<String, String> entry : trgToDataFileMap.entrySet()) {
+				if (entry.getValue() == null) {
+					countOfTrgFilesWithoutCsvOrDataFiles++;
+				}
+				System.out.println("Trg file: " + entry.getKey() + ", Data file: " + entry.getValue());
+			}
+
+			int totalFiles = trgToDataFileMap.size();
+			int processedFiles = totalFiles - countOfTrgFilesWithoutCsvOrDataFiles;
+
+			logger.info("Processing {} files. Skipping {} files as corresponding CSV or data file was absent.",
+					processedFiles, countOfTrgFilesWithoutCsvOrDataFiles);
+
+			// traversing again on the map and processing csv files
+			for (Map.Entry<String, String> entry : trgToDataFileMap.entrySet()) {
+				if (entry.getValue() != null) {
+					String csvFileName = entry.getKey() + csvFileExtension;
+					String dataFileName = entry.getValue();
+					String csvFilePath = sourceFolder + File.separator + csvFileName;
+					String dataFilePath = sourceFolder + File.separator + dataFileName;
+
+					processCsvFile(csvFilePath, destinationFolder, dataFilePath);
+				}
 			}
 		} else {
 			throw new SourceFolderDoesNotExistException("Source folder does not exist or is empty.");
 		}
 	}
 
-	private static void processCsvFile(File csvFile, String destinationFolder) {
-		try (Scanner scanner = new Scanner(csvFile)) {
+	private static void processCsvFile(String csvFilePath, String destinationFolder, String dataFilePath) {
+		try (Scanner scanner = new Scanner(new File(csvFilePath))) {
+			logger.info("Reading CSV file: {}", csvFilePath);
+
 			if (scanner.hasNextLine()) {
-				scanner.nextLine();
+				String header = scanner.nextLine();
+				logger.info("CSV header: {}", header);
 			}
 
 			while (scanner.hasNextLine()) {
 				String line = scanner.nextLine();
-				String[] parts = line.split(",");
+				logger.info("CSV line: {}", line);
 
+				String[] parts = line.split(",");
 				if (parts.length == 2) {
 					String folder = parts[0].trim();
 					boolean createRevision = Boolean.parseBoolean(parts[1].trim());
+					String destinationFolderPath = destinationFolder + File.separator + folder;
+					logger.info("Destination folder path: {}", destinationFolderPath);
 
-					logger.info("Processing data files for folder: {}", folder);
-
-					if (createRevision) {
-						logger.info("Creating revisions for files in folder: {}", folder);
-					} else {
-						logger.info("Copying files to folder: {}", folder);
+					File destinationFolderFile = new File(destinationFolderPath);
+					if (!destinationFolderFile.exists()) {
+						logger.error("Could not process data file as {} does not exist", destinationFolderPath);
+						return;
 					}
+					processDataFile(dataFilePath, destinationFolderPath, createRevision);
 				}
 			}
 		} catch (FileNotFoundException e) {
@@ -86,35 +139,70 @@ public class FileProcessor {
 		}
 	}
 
-	private static void processDataFile(File dataFile, String destinationFolder) {
-		String sourceFileName = dataFile.getName();
-		String destinationFileName = sourceFileName;
+	private static void processDataFile(String dataFilePath, String destinationFolderPath, boolean createRevision) {
+		File sourceFile = new File(dataFilePath);
 
-		if (sourceFileName.matches(".*\\.(txt|other_extension)")) {
-			int revision = 1;
-			File destinationFile = new File(destinationFolder, destinationFileName);
-			while (destinationFile.exists()) {
-				revision++;
-				destinationFileName = sourceFileName.replaceFirst("$", "(" + revision + ").$0");
-				destinationFile = new File(destinationFolder, destinationFileName);
-			}
+		if (!sourceFile.exists()) {
+			logger.error("Source file not found: {}", dataFilePath);
+			return;
+		}
 
-			try (BufferedReader reader = new BufferedReader(new FileReader(dataFile));
-					FileWriter writer = new FileWriter(destinationFile)) {
+		String baseName = sourceFile.getName();
+		String extension = "";
 
-				String line;
-				while ((line = reader.readLine()) != null) {
-					writer.write(line);
-					writer.write("\n");
+		int lastDotIndex = baseName.lastIndexOf('.');
+		if (lastDotIndex != -1) {
+			baseName = baseName.substring(0, lastDotIndex);
+			extension = sourceFile.getName().substring(lastDotIndex);
+		}
+
+		int revision = 1;
+		File destinationFolder = new File(destinationFolderPath);
+
+		// Create revision logic
+		if (createRevision) {
+			while (true) {
+				String revisedName = "";
+				if (revision == 1) {
+					revisedName = baseName;
+				} else {
+					revisedName = baseName + "(" + revision + ")";
+				}
+				File destinationFile = new File(destinationFolder, revisedName + extension);
+
+				if (!destinationFile.exists()) {
+					baseName = revisedName;
+					break;
 				}
 
-				logger.info("Copied and processed data file: {}", sourceFileName);
-			} catch (IOException e) {
-				logger.error("Error processing data file: {}", e.getMessage());
-				writeErrorToFile(e.getMessage(), destinationFolder, sourceFileName);
+				revision++;
 			}
 		} else {
-			logger.info("Skipping unsupported data file: {}", sourceFileName);
+			File destinationFile = new File(destinationFolder, baseName + extension);
+
+			if (destinationFile.exists()) {
+				logger.info("File already exists in destination folder: {}", destinationFile.getName());
+				return;
+			}
+		}
+
+		// Construct the destination file path
+		File destinationFile = new File(destinationFolder, baseName + extension);
+
+		try (InputStream inputStream = new FileInputStream(sourceFile);
+				OutputStream outputStream = new FileOutputStream(destinationFile)) {
+
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+
+			while ((bytesRead = inputStream.read(buffer)) != -1) {
+				outputStream.write(buffer, 0, bytesRead);
+			}
+
+			logger.info("Copied and processed data file: {}", destinationFile.getName());
+		} catch (IOException e) {
+			logger.error("Error processing data file: {}", e.getMessage());
+			writeErrorToFile(e.getMessage(), destinationFolderPath, sourceFile.getName());
 		}
 	}
 
