@@ -21,12 +21,12 @@ public class FileProcessor {
 	// the extension of data file can be anything except these three
 
 	public static void main(String[] args) {
-		String sourceFolder = "C:\\Users\\DishaSingh\\Documents\\source";
+		String srcFolder = "C:\\Users\\DishaSingh\\Documents\\source";
 		String destinationFolder = "C:\\Users\\DishaSingh\\Documents\\destination";
 
 		try {
 			logger.info("Started processing files from source folder");
-			processFiles(sourceFolder, destinationFolder);
+			processFiles(srcFolder, destinationFolder);
 		} catch (SourceFolderDoesNotExistException e) {
 			logger.error("Source folder does not exist or is empty: {}", e.getMessage());
 		}
