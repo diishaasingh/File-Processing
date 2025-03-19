@@ -195,3 +195,5 @@
 2023-10-04 14:56:44 INFO  FileProcessor:116 - CSV header: Folder,Create Revision
 2023-10-04 14:56:44 INFO  FileProcessor:121 - CSV line: data2,true
 2023-10-04 14:56:44 INFO  FileProcessor:213 - Copied and processed data file: file(3).txt
+2025-03-19 23:24:05 INFO  FileProcessor:28 - Started processing files from source folder
+2025-03-19 23:24:05 ERROR FileProcessor:31 - Source folder does not exist or is empty: Source folder does not exist or is empty.
