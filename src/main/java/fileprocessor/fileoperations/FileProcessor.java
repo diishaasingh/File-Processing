@@ -18,7 +18,7 @@ public class FileProcessor {
 	private static final String trgFileExtension = ".trg";
 	private static final String csvFileExtension = ".csv";
 	private static final String errorFileExtension = ".err";
-	// the extension of data file can be anything except the above three
+	// the extension of data file can be anything except above these
 
 	public static void main(String[] args) {
 		String srcFolder = "C:\\Users\\DishaSingh\\Documents\\source";
